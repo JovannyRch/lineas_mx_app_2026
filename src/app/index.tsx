@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { useRef, useState } from 'react';
 import {
@@ -74,19 +75,11 @@ export default function HomeScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <View
-              style={[
-                styles.iconContainer,
-                { backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF' },
-              ]}
-            >
-              <SymbolView
-                name="shield.checkered"
-                size={32}
-                tintColor="#208AEF"
-                weight="semibold"
-              />
-            </View>
+            <Image
+              source={require('@/assets/images/icon.png')}
+              style={styles.appIcon}
+              contentFit="contain"
+            />
             <ThemedText type="subtitle" style={styles.title}>
               MisLineas
             </ThemedText>
@@ -350,15 +343,13 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.three,
     gap: Spacing.two,
   },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  appIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
     marginBottom: Spacing.one,
     borderCurve: 'continuous',
-    boxShadow: '0 2px 8px rgba(32, 138, 239, 0.12)',
+    boxShadow: '0 4px 12px rgba(32, 138, 239, 0.2)',
   },
   title: {
     textAlign: 'center',
