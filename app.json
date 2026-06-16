@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "lineas-mx",
+    "name": "MisLineas",
     "slug": "lineas-mx",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,11 +8,13 @@
     "scheme": "lineasmx",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.jvz.lineasmx",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.jvz.lineasmx",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#208AEF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -29,9 +31,15 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
           "android": {
             "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
+            "imageWidth": 200
+          },
+          "ios": {
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 200
           }
         }
       ]
