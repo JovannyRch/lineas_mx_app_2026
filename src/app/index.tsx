@@ -14,6 +14,7 @@ import {
 import Animated, { FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AdMobBanner } from "@/components/admob-banner";
 import { LineCard } from "@/components/line-card";
 import { SkeletonCard } from "@/components/skeleton-card";
 import { ThemedText } from "@/components/themed-text";
@@ -567,6 +568,7 @@ export default function HomeScreen() {
             </ThemedText>
           </View>
         </ScrollView>
+        <AdMobBanner />
       </SafeAreaView>
     </View>
   );
