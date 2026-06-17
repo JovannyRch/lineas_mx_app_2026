@@ -3,6 +3,7 @@ import { SymbolView } from "expo-symbols";
 import { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -543,6 +544,28 @@ export default function HomeScreen() {
               ))}
             </Animated.View>
           )}
+
+          <View style={styles.credits}>
+            <ThemedText
+              type="small"
+              style={{
+                color: isDark ? "#6B7280" : "#9CA3AF",
+                textAlign: "center",
+              }}
+            >
+              Basado en{" "}
+              <ThemedText
+                type="small"
+                style={{ color: "#208AEF", fontWeight: "600" }}
+                onPress={() =>
+                  Linking.openURL("https://github.com/moraxh/MisLineas")
+                }
+              >
+                MisLineas
+              </ThemedText>
+              {" "}por Jorge Mora
+            </ThemedText>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -758,5 +781,9 @@ const styles = StyleSheet.create({
   },
   historyRemoveButton: {
     padding: 4,
+  },
+  credits: {
+    marginTop: Spacing.four,
+    paddingTop: Spacing.three,
   },
 });

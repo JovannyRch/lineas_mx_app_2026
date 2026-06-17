@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.jvz.lineasmx",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#208AEF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -48,6 +49,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9ec429b6-6c1d-462f-8193-2ad2a60d8c8e"
+      }
     }
   }
 }
