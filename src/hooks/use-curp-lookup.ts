@@ -6,7 +6,7 @@ import type { DisplayLine, ProviderResponse } from '@/types';
 const API_URL = 'https://www.mislineas.com.mx/api/lookup';
 const QUERY_TIMEOUT_MS = 45000;
 
-export function useCurpLookup() {
+export function useCurpLookup(onSaveToHistory?: (curp: string) => void) {
   const [loading, setLoading] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +98,7 @@ export function useCurpLookup() {
         return;
       }
 
+      onSaveToHistory?.(curp.toUpperCase());
       clearTimeout(timeoutId);
     } catch (err: unknown) {
       clearTimeout(timeoutId);

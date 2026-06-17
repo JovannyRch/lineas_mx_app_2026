@@ -1,6 +1,6 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { useRef, useState } from 'react';
+import { Image } from "expo-image";
+import { SymbolView } from "expo-symbols";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,34 +9,40 @@ import {
   TextInput,
   View,
   useColorScheme,
-} from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import Animated, { FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { LineCard } from '@/components/line-card';
-import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
-import { getCurpValidationError } from '@/lib/curp';
-import { getRiskLevel } from '@/lib/lookup';
-import { useCurpLookup } from '@/hooks/use-curp-lookup';
-import type { FilterTab } from '@/types';
+import { LineCard } from "@/components/line-card";
+import { SkeletonCard } from "@/components/skeleton-card";
+import { ThemedText } from "@/components/themed-text";
+import { Spacing } from "@/constants/theme";
+import { useCurpHistory } from "@/hooks/use-curp-history";
+import { useCurpLookup } from "@/hooks/use-curp-lookup";
+import { getCurpValidationError } from "@/lib/curp";
+import { getRiskLevel } from "@/lib/lookup";
+import { exportPDFReport } from "@/lib/pdf-export";
+import type { FilterTab } from "@/types";
 
 const TOTAL_PROVIDERS = 13;
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all', label: 'Todos' },
-  { key: 'confirmed', label: 'Registradas' },
-  { key: 'possible', label: 'Posibles' },
-  { key: 'errors', label: 'Errores' },
+  { key: "all", label: "Todos" },
+  { key: "confirmed", label: "Registradas" },
+  { key: "possible", label: "Posibles" },
+  { key: "errors", label: "Errores" },
 ];
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const [curp, setCurp] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  const isDark = colorScheme === "dark";
+  const [curp, setCurp] = useState("");
+  const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
+  const [isExporting, setIsExporting] = useState(false);
   const inputRef = useRef<TextInput>(null);
-  const { loading, timedOut, error, results, scannedCount, lookup, reset } = useCurpLookup();
+  const { history, saveToHistory, removeFromHistory } = useCurpHistory();
+  const { loading, timedOut, error, results, scannedCount, lookup, reset } =
+    useCurpLookup(saveToHistory);
 
   const curpError = getCurpValidationError(curp);
   const curpIsValid = curp.length === 18 && !curpError;
@@ -48,27 +54,51 @@ export default function HomeScreen() {
 
   const handleReset = () => {
     reset();
-    setCurp('');
-    setActiveFilter('all');
+    setCurp("");
+    setActiveFilter("all");
+  };
+
+  const handleExportPDF = async () => {
+    if (!results || !riskLevel) return;
+    setIsExporting(true);
+    try {
+      await exportPDFReport(curp.toUpperCase(), results, riskLevel);
+    } catch (err) {
+      console.error("Error exporting PDF:", err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const filteredResults = results?.filter((line) => {
-    if (activeFilter === 'confirmed') return !line.isPossible && !line.isNotFound && !line.isError && !line.isUnavailable;
-    if (activeFilter === 'possible') return line.isPossible;
-    if (activeFilter === 'errors') return line.isError || line.isUnavailable;
+    if (activeFilter === "confirmed")
+      return (
+        !line.isPossible &&
+        !line.isNotFound &&
+        !line.isError &&
+        !line.isUnavailable
+      );
+    if (activeFilter === "possible") return line.isPossible;
+    if (activeFilter === "errors") return line.isError || line.isUnavailable;
     return true;
   });
 
   const riskLevel = results ? getRiskLevel(results) : null;
 
-  const confirmedCount = results?.filter(
-    (l) => !l.isPossible && !l.isNotFound && !l.isError && !l.isUnavailable
-  ).length ?? 0;
+  const confirmedCount =
+    results?.filter(
+      (l) => !l.isPossible && !l.isNotFound && !l.isError && !l.isUnavailable,
+    ).length ?? 0;
   const possibleCount = results?.filter((l) => l.isPossible).length ?? 0;
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#0A0A0F' : '#F8F9FC' }]}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? "#0A0A0F" : "#F8F9FC" },
+      ]}
+    >
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -76,7 +106,7 @@ export default function HomeScreen() {
         >
           <View style={styles.header}>
             <Image
-              source={require('@/assets/images/icon.png')}
+              source={require("@/assets/images/icon.png")}
               style={styles.appIcon}
               contentFit="contain"
             />
@@ -85,7 +115,10 @@ export default function HomeScreen() {
             </ThemedText>
             <ThemedText
               type="small"
-              style={[styles.subtitle, { color: isDark ? '#8888AA' : '#6B7280' }]}
+              style={[
+                styles.subtitle,
+                { color: isDark ? "#8888AA" : "#6B7280" },
+              ]}
             >
               Consulta que lineas telefonicas estan registradas bajo tu CURP
             </ThemedText>
@@ -96,17 +129,20 @@ export default function HomeScreen() {
               style={[
                 styles.inputContainer,
                 {
-                  backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF',
-                  borderColor: curpError && curp.length === 18
-                    ? '#EF4444'
-                    : isDark ? '#2A2A3E' : '#E0E2E8',
+                  backgroundColor: isDark ? "#1A1A2E" : "#FFFFFF",
+                  borderColor:
+                    curpError && curp.length === 18
+                      ? "#EF4444"
+                      : isDark
+                        ? "#2A2A3E"
+                        : "#E0E2E8",
                 },
               ]}
             >
               <SymbolView
                 name="person.text.rectangle"
                 size={20}
-                tintColor={isDark ? '#6B7280' : '#9CA3AF'}
+                tintColor={isDark ? "#6B7280" : "#9CA3AF"}
                 weight="medium"
               />
               <TextInput
@@ -114,29 +150,90 @@ export default function HomeScreen() {
                 value={curp}
                 onChangeText={(text) => setCurp(text.toUpperCase())}
                 placeholder="Ingresa tu CURP"
-                placeholderTextColor={isDark ? '#4B5563' : '#9CA3AF'}
+                placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 maxLength={18}
-                style={[styles.input, { color: isDark ? '#FFFFFF' : '#111827' }]}
+                style={[
+                  styles.input,
+                  { color: isDark ? "#FFFFFF" : "#111827" },
+                ]}
                 onSubmitEditing={handleLookup}
                 returnKeyType="search"
               />
               {curp.length > 0 && (
-                <Pressable onPress={() => setCurp('')} hitSlop={8}>
+                <Pressable onPress={() => setCurp("")} hitSlop={8}>
                   <SymbolView
                     name="xmark.circle.fill"
                     size={18}
-                    tintColor={isDark ? '#6B7280' : '#9CA3AF'}
+                    tintColor={isDark ? "#6B7280" : "#9CA3AF"}
                   />
                 </Pressable>
               )}
             </View>
 
             {curpError && curp.length === 18 && (
-              <ThemedText type="small" style={{ color: '#EF4444', paddingHorizontal: 4 }}>
+              <ThemedText
+                type="small"
+                style={{ color: "#EF4444", paddingHorizontal: 4 }}
+              >
                 {curpError}
               </ThemedText>
+            )}
+
+            {history.length > 0 && curp.length === 0 && (
+              <View style={styles.historySection}>
+                <View style={styles.historyHeader}>
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color: isDark ? "#8888AA" : "#6B7280",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Consultas recientes
+                  </ThemedText>
+                </View>
+                <View style={styles.historyChips}>
+                  {history.slice(0, 3).map((item) => (
+                    <View key={item.curp} style={styles.historyChipContainer}>
+                      <Pressable
+                        onPress={() => setCurp(item.curp)}
+                        style={[
+                          styles.historyChip,
+                          { backgroundColor: isDark ? "#1A1A2E" : "#F3F4F6" },
+                        ]}
+                      >
+                        <SymbolView
+                          name="clock"
+                          size={14}
+                          tintColor={isDark ? "#8888AA" : "#6B7280"}
+                        />
+                        <ThemedText
+                          type="small"
+                          style={{
+                            color: isDark ? "#E5E7EB" : "#374151",
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          {item.curp}
+                        </ThemedText>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => removeFromHistory(item.curp)}
+                        hitSlop={8}
+                        style={styles.historyRemoveButton}
+                      >
+                        <SymbolView
+                          name="xmark.circle.fill"
+                          size={16}
+                          tintColor={isDark ? "#6B7280" : "#9CA3AF"}
+                        />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              </View>
             )}
 
             <Pressable
@@ -156,7 +253,12 @@ export default function HomeScreen() {
                 </View>
               ) : (
                 <View style={styles.buttonContent}>
-                  <SymbolView name="magnifyingglass" size={18} tintColor="#FFFFFF" weight="semibold" />
+                  <SymbolView
+                    name="magnifyingglass"
+                    size={18}
+                    tintColor="#FFFFFF"
+                    weight="semibold"
+                  />
                   <ThemedText style={styles.buttonText}>Consultar</ThemedText>
                 </View>
               )}
@@ -167,10 +269,17 @@ export default function HomeScreen() {
             <Animated.View
               entering={FadeIn.duration(300)}
               exiting={FadeOut.duration(200)}
-              style={[styles.errorContainer, { backgroundColor: isDark ? '#450A0A' : '#FEF2F2' }]}
+              style={[
+                styles.errorContainer,
+                { backgroundColor: isDark ? "#450A0A" : "#FEF2F2" },
+              ]}
             >
-              <SymbolView name="exclamationmark.triangle.fill" size={18} tintColor="#EF4444" />
-              <ThemedText type="small" style={{ color: '#EF4444', flex: 1 }}>
+              <SymbolView
+                name="exclamationmark.triangle.fill"
+                size={18}
+                tintColor="#EF4444"
+              />
+              <ThemedText type="small" style={{ color: "#EF4444", flex: 1 }}>
                 {error}
               </ThemedText>
             </Animated.View>
@@ -179,24 +288,31 @@ export default function HomeScreen() {
           {timedOut && (
             <Animated.View
               entering={FadeIn.duration(300)}
-              style={[styles.errorContainer, { backgroundColor: isDark ? '#1C1917' : '#FFFBEB' }]}
+              style={[
+                styles.errorContainer,
+                { backgroundColor: isDark ? "#1C1917" : "#FFFBEB" },
+              ]}
             >
               <SymbolView name="clock.fill" size={18} tintColor="#F59E0B" />
-              <ThemedText type="small" style={{ color: '#F59E0B', flex: 1 }}>
-                La consulta tardo demasiado. Algunos proveedores pueden no estar disponibles.
+              <ThemedText type="small" style={{ color: "#F59E0B", flex: 1 }}>
+                La consulta tardo demasiado. Algunos proveedores pueden no estar
+                disponibles.
               </ThemedText>
             </Animated.View>
           )}
 
           {results && results.length > 0 && (
-            <Animated.View entering={FadeIn.duration(400)} style={styles.resultsSection}>
+            <Animated.View
+              entering={FadeIn.duration(400)}
+              style={styles.resultsSection}
+            >
               {riskLevel && (
                 <View
                   style={[
                     styles.riskBanner,
                     {
-                      backgroundColor: isDark ? '#1A1A2E' : '#FFFFFF',
-                      borderColor: isDark ? '#2A2A3E' : '#E8EAF0',
+                      backgroundColor: isDark ? "#1A1A2E" : "#FFFFFF",
+                      borderColor: isDark ? "#2A2A3E" : "#E8EAF0",
                     },
                   ]}
                 >
@@ -213,7 +329,10 @@ export default function HomeScreen() {
                       </ThemedText>
                       <ThemedText
                         type="small"
-                        style={{ color: isDark ? '#8888AA' : '#6B7280', fontSize: 12 }}
+                        style={{
+                          color: isDark ? "#8888AA" : "#6B7280",
+                          fontSize: 12,
+                        }}
                       >
                         {riskLevel.description}
                       </ThemedText>
@@ -221,15 +340,37 @@ export default function HomeScreen() {
                   </View>
                   <View style={styles.riskCounts}>
                     {confirmedCount > 0 && (
-                      <View style={[styles.countBadge, { backgroundColor: isDark ? '#450A0A' : '#FEE2E2' }]}>
-                        <ThemedText style={{ color: '#EF4444', fontSize: 12, fontWeight: '700' }}>
+                      <View
+                        style={[
+                          styles.countBadge,
+                          { backgroundColor: isDark ? "#450A0A" : "#FEE2E2" },
+                        ]}
+                      >
+                        <ThemedText
+                          style={{
+                            color: "#EF4444",
+                            fontSize: 12,
+                            fontWeight: "700",
+                          }}
+                        >
                           {confirmedCount}
                         </ThemedText>
                       </View>
                     )}
                     {possibleCount > 0 && (
-                      <View style={[styles.countBadge, { backgroundColor: isDark ? '#422006' : '#FEF3C7' }]}>
-                        <ThemedText style={{ color: '#F59E0B', fontSize: 12, fontWeight: '700' }}>
+                      <View
+                        style={[
+                          styles.countBadge,
+                          { backgroundColor: isDark ? "#422006" : "#FEF3C7" },
+                        ]}
+                      >
+                        <ThemedText
+                          style={{
+                            color: "#F59E0B",
+                            fontSize: 12,
+                            fontWeight: "700",
+                          }}
+                        >
                           {possibleCount}
                         </ThemedText>
                       </View>
@@ -249,19 +390,27 @@ export default function HomeScreen() {
                         styles.filterChip,
                         {
                           backgroundColor: isActive
-                            ? '#208AEF'
-                            : isDark ? '#1A1A2E' : '#FFFFFF',
+                            ? "#208AEF"
+                            : isDark
+                              ? "#1A1A2E"
+                              : "#FFFFFF",
                           borderColor: isActive
-                            ? '#208AEF'
-                            : isDark ? '#2A2A3E' : '#E0E2E8',
+                            ? "#208AEF"
+                            : isDark
+                              ? "#2A2A3E"
+                              : "#E0E2E8",
                         },
                       ]}
                     >
                       <ThemedText
                         style={{
-                          color: isActive ? '#FFFFFF' : isDark ? '#8888AA' : '#6B7280',
+                          color: isActive
+                            ? "#FFFFFF"
+                            : isDark
+                              ? "#8888AA"
+                              : "#6B7280",
                           fontSize: 13,
-                          fontWeight: isActive ? '700' : '500',
+                          fontWeight: isActive ? "700" : "500",
                         }}
                       >
                         {tab.label}
@@ -278,16 +427,56 @@ export default function HomeScreen() {
                 {filteredResults?.length === 0 && (
                   <ThemedText
                     type="small"
-                    style={{ textAlign: 'center', color: isDark ? '#4B5563' : '#9CA3AF', paddingVertical: Spacing.three }}
+                    style={{
+                      textAlign: "center",
+                      color: isDark ? "#4B5563" : "#9CA3AF",
+                      paddingVertical: Spacing.three,
+                    }}
                   >
                     No hay resultados en esta categoria
                   </ThemedText>
                 )}
               </View>
 
+              <Pressable
+                onPress={handleExportPDF}
+                disabled={isExporting}
+                style={[
+                  styles.exportButton,
+                  {
+                    backgroundColor: isDark ? "#1A1A2E" : "#FFFFFF",
+                    borderColor: isDark ? "#2A2A3E" : "#E0E2E8",
+                  },
+                  isExporting && styles.buttonDisabled,
+                ]}
+              >
+                {isExporting ? (
+                  <ActivityIndicator size="small" color="#208AEF" />
+                ) : (
+                  <SymbolView
+                    name="doc.richtext"
+                    size={18}
+                    tintColor="#208AEF"
+                    weight="semibold"
+                  />
+                )}
+                <ThemedText
+                  style={{ color: "#208AEF", fontSize: 14, fontWeight: "600" }}
+                >
+                  {isExporting ? "Generando PDF..." : "Exportar PDF"}
+                </ThemedText>
+              </Pressable>
+
               <Pressable onPress={handleReset} style={styles.resetButton}>
-                <SymbolView name="arrow.counterclockwise" size={16} tintColor="#208AEF" weight="semibold" />
-                <ThemedText style={{ color: '#208AEF', fontSize: 14, fontWeight: '600' }}>
+                <SymbolView
+                  name="arrow.counterclockwise"
+                  size={16}
+                  tintColor="#208AEF"
+                  weight="semibold"
+                />
+                <ThemedText
+                  style={{ color: "#208AEF", fontSize: 14, fontWeight: "600" }}
+                >
                   Nueva consulta
                 </ThemedText>
               </Pressable>
@@ -295,16 +484,22 @@ export default function HomeScreen() {
           )}
 
           {!loading && !results && !error && !timedOut && (
-            <Animated.View entering={FadeInDown.delay(200).duration(500)} style={styles.emptyState}>
+            <Animated.View
+              entering={FadeInDown.delay(200).duration(500)}
+              style={styles.emptyState}
+            >
               <SymbolView
                 name="doc.text.magnifyingglass"
                 size={48}
-                tintColor={isDark ? '#2A2A3E' : '#D1D5DB'}
+                tintColor={isDark ? "#2A2A3E" : "#D1D5DB"}
                 weight="light"
               />
               <ThemedText
                 type="small"
-                style={[styles.emptyText, { color: isDark ? '#4B5563' : '#9CA3AF' }]}
+                style={[
+                  styles.emptyText,
+                  { color: isDark ? "#4B5563" : "#9CA3AF" },
+                ]}
               >
                 Ingresa tu CURP para consultar
               </ThemedText>
@@ -312,12 +507,41 @@ export default function HomeScreen() {
           )}
 
           {loading && results && results.length === 0 && (
-            <View style={styles.loadingState}>
-              <ActivityIndicator size="large" color="#208AEF" />
-              <ThemedText type="small" style={{ color: isDark ? '#8888AA' : '#6B7280' }}>
-                Iniciando consulta...
-              </ThemedText>
-            </View>
+            <Animated.View
+              entering={FadeIn.duration(300)}
+              style={styles.skeletonSection}
+            >
+              <View style={styles.skeletonHeader}>
+                <ActivityIndicator size="small" color="#208AEF" />
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: isDark ? "#8888AA" : "#6B7280",
+                    fontWeight: "600",
+                  }}
+                >
+                  Escaneando proveedores...
+                </ThemedText>
+              </View>
+              <View style={styles.skeletonList}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonCard key={i} index={i} />
+                ))}
+              </View>
+            </Animated.View>
+          )}
+
+          {loading && results && results.length > 0 && (
+            <Animated.View
+              entering={FadeIn.duration(200)}
+              style={styles.skeletonList}
+            >
+              {Array.from({
+                length: Math.max(2, TOTAL_PROVIDERS - scannedCount),
+              }).map((_, i) => (
+                <SkeletonCard key={`pending-${i}`} index={i} />
+              ))}
+            </Animated.View>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -338,7 +562,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.four,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: Spacing.four,
     paddingBottom: Spacing.three,
     gap: Spacing.two,
@@ -348,16 +572,16 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 18,
     marginBottom: Spacing.one,
-    borderCurve: 'continuous',
-    boxShadow: '0 4px 12px rgba(32, 138, 239, 0.2)',
+    borderCurve: "continuous",
+    boxShadow: "0 4px 12px rgba(32, 138, 239, 0.2)",
   },
   title: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 28,
     lineHeight: 34,
   },
   subtitle: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 15,
     lineHeight: 22,
   },
@@ -366,48 +590,48 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.three,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.three,
     height: 56,
     borderRadius: 16,
     borderWidth: 1.5,
     gap: Spacing.two,
-    borderCurve: 'continuous',
+    borderCurve: "continuous",
   },
   input: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     letterSpacing: 0.5,
     paddingVertical: 0,
   },
   button: {
     height: 54,
     borderRadius: 16,
-    backgroundColor: '#208AEF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderCurve: 'continuous',
-    boxShadow: '0 4px 12px rgba(32, 138, 239, 0.3)',
+    backgroundColor: "#208AEF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderCurve: "continuous",
+    boxShadow: "0 4px 12px rgba(32, 138, 239, 0.3)",
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.two,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.three,
     borderRadius: 12,
     gap: Spacing.two,
@@ -417,17 +641,17 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   riskBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: Spacing.three,
     borderRadius: 16,
     borderWidth: 1,
-    borderCurve: 'continuous',
+    borderCurve: "continuous",
   },
   riskLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.two,
     flex: 1,
   },
@@ -437,18 +661,18 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   riskCounts: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
   },
   countBadge: {
     width: 28,
     height: 28,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   filterRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   filterChip: {
@@ -456,33 +680,83 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderCurve: 'continuous',
+    borderCurve: "continuous",
   },
   resultsList: {
     gap: Spacing.two,
   },
   resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.one,
     paddingVertical: Spacing.two,
   },
+  exportButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.one,
+    paddingVertical: Spacing.two,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderCurve: "continuous",
+    marginTop: Spacing.one,
+  },
   emptyState: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.three,
     paddingBottom: Spacing.six,
   },
   emptyText: {
-    textAlign: 'center',
+    textAlign: "center",
   },
   loadingState: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.three,
     paddingBottom: Spacing.six,
+  },
+  skeletonSection: {
+    gap: Spacing.three,
+  },
+  skeletonHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
+    paddingHorizontal: 4,
+  },
+  skeletonList: {
+    gap: Spacing.two,
+  },
+  historySection: {
+    gap: Spacing.one,
+  },
+  historyHeader: {
+    paddingHorizontal: 4,
+  },
+  historyChips: {
+    gap: Spacing.one,
+  },
+  historyChipContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+  },
+  historyChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    borderRadius: 8,
+    flex: 1,
+    borderCurve: "continuous",
+  },
+  historyRemoveButton: {
+    padding: 4,
   },
 });
